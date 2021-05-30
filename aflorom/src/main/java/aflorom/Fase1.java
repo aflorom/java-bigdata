@@ -50,29 +50,36 @@ public class Fase1 {
 
 		admin = connection.getAdmin();
 
-		String tableToCreateCarga = "table-carga-parte-1";
-		String tableToCreateExtraccion = "table-extraccion-parte-1";
+		String tableToCreateCarga = "table-loading-part-1";
+		String tableToCreateExtraccion = "table-extraction-part-1";
 
-		if (args[3].equals("CARGA")) {
+		if (args.length == 4) {
 
-			System.out.println("Starting Carga!");
+			if (args[3].equals("CARGA")) {
 
-			herramientaDeCarga(tableToCreateCarga, args[2], Integer.parseInt(args[0]), Integer.parseInt(args[1]));
+				System.out.println("Starting Carga!");
 
-			System.out.println("Finished Carga!");
+				herramientaDeCarga(tableToCreateCarga, args[2], Integer.parseInt(args[0]), Integer.parseInt(args[1]));
 
-		} else if (args[3].equals("EXTRACCION")) {
+				System.out.println("Finished Carga!");
 
-			System.out.println("Starting Extraccion!");
+			} else if (args[3].equals("EXTRACCION")) {
 
-			herramientaDeExtraccion(tableToCreateExtraccion, args[2], Integer.parseInt(args[0]),
-					Integer.parseInt(args[1]));
+				System.out.println("Starting Extraccion!");
 
-			System.out.println("Finished Extraccion!");
+				herramientaDeExtraccion(tableToCreateExtraccion, args[2], Integer.parseInt(args[0]),
+						Integer.parseInt(args[1]));
+
+				System.out.println("Finished Extraccion!");
+
+			} else {
+
+				System.out.println("You have selected a wrong selection. Please introduces CARGA or EXTRACCION!");
+			}
 
 		} else {
 
-			System.out.println("You hace selected a wrong selection. Please introduces CARGA or EXTRACCION!");
+			System.out.println("You have not introduced the correct format of arguments F C path_file CARGA|EXTRACCION");
 		}
 	}
 
@@ -218,22 +225,16 @@ public class Fase1 {
 
 				rowData.add(data.get(i).get(0));
 				rowData.add(data.get(i).get(1));
+				rowData.add(data.get(i).get(columns + 1));
 
 				Put p = new Put(Bytes.toBytes(data.get(i).get(0) + ":" + data.get(i).get(1)));
 
 				p.addColumn(Bytes.toBytes("sensor"), Bytes.toBytes("sensor"), Bytes.toBytes(data.get(i).get(0)));
 				p.addColumn(Bytes.toBytes("datetime"), Bytes.toBytes("datetime"), Bytes.toBytes(data.get(i).get(1)));
+				p.addColumn(Bytes.toBytes("measure"), Bytes.toBytes("measure" + columns),
+						Bytes.toBytes(data.get(i).get(columns + 1)));
 
-				for (int j = 2; j < columns + 2; j++) {
-
-					if (columns == (j - 1)) {
-
-						rowData.add(data.get(i).get(j));
-
-						p.addColumn(Bytes.toBytes("measure"), Bytes.toBytes("measure" + columns),
-								Bytes.toBytes(data.get(i).get(j)));
-					}
-				}
+				tableTable.put(p);
 
 				list.add(rowData);
 
@@ -251,7 +252,7 @@ public class Fase1 {
 
 		ArrayList<ArrayList<String>> list = new ArrayList<ArrayList<String>>();
 
-		for (int i = 0; i < data.size(); i++) {
+		for (int i = 0; i < 10; i++) {
 
 			for (int j = 1; j <= rows; j++) {
 
