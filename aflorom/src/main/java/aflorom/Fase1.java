@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -28,57 +27,53 @@ import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.util.Bytes;
-
-import com.google.protobuf.ServiceException;
 import com.opencsv.CSVReader;
 
 public class Fase1 {
 
 	static Admin admin = null;
 	static Connection connection = null;
+
 	static ArrayList<ArrayList<String>> data = null;
 
-	public static void main(String[] args) throws IOException, ServiceException {
-
-		Integer rows = 2;
-		Integer columns = 3;
+	public static void main(String[] args) throws IOException {
 
 		Configuration configuration = HBaseConfiguration.create();
 
 		System.out.println("Processing!");
 
-		configuration.set("hbase.master.info.port", "16010");
-		configuration.set("hbase.zookeeper.property.clientPort", "2181");
+		configuration.set("hbase.rootdir", "file:///data/hbase");
 		configuration.set("hbase.cluster.distributed", "true");
-		configuration.set("hbase.master.port", "16000");
-		configuration.set("hbase.zookeeper.quorum", "zoo");
-		configuration.set("hbase.master", "hbase-master:16000");
-		configuration.set("hbase.regionserver.port", "16020");
-		configuration.set("hbase.regionserver.info.port", "16030");
-		configuration.set("hbase.master.hostname", "hbase-master");
-		configuration.set("hbase.rootdir", "hdfs://namenode:9000/hbase");
+		configuration.set("hbase.zookeeper.quorum", "localhost");
 
 		connection = ConnectionFactory.createConnection(configuration);
 
 		admin = connection.getAdmin();
 
-		String tableToCreate = "capTable9";
+		String tableToCreateCarga = "table-carga-parte-1";
+		String tableToCreateExtraccion = "table-extraccion-parte-1";
 
-		List<String[]> data = loadFromFile("SET-dec-2013.csv");
+		if (args[3].equals("CARGA")) {
 
-		// dataHerramientaDeCarga = herramientaDeCarga(tableToCreate,
-		// "SET-dec-2013.csv", rows, columns);
+			System.out.println("Starting Carga!");
 
-		// herramientaDeCarga(tableToCreate, "SET-dec-2013.csv", rows, columns);
+			herramientaDeCarga(tableToCreateCarga, args[2], Integer.parseInt(args[0]), Integer.parseInt(args[1]));
 
-		// viewData(data, tableToCreate, rows, columns);
+			System.out.println("Finished Carga!");
 
-		herramientaDeExtraccion(tableToCreate, "SET-dec-2013.csv", rows, columns);
+		} else if (args[3].equals("EXTRACCION")) {
 
-		System.out.println("Finished!");
+			System.out.println("Starting Extraccion!");
 
-		// extraccionDeInformacion("SET-dec-2013.csv", rows, columns);
-		// formatoDeSalida("SET-dec-2013.csv", rows, columns);
+			herramientaDeExtraccion(tableToCreateExtraccion, args[2], Integer.parseInt(args[0]),
+					Integer.parseInt(args[1]));
+
+			System.out.println("Finished Extraccion!");
+
+		} else {
+
+			System.out.println("You hace selected a wrong selection. Please introduces CARGA or EXTRACCION!");
+		}
 	}
 
 	public static void viewData(List<String[]> data, String table, Integer rows, Integer columns) {
@@ -129,10 +124,9 @@ public class Fase1 {
 
 		List<String[]> r = null;
 
-		try (CSVReader reader = new CSVReader(new FileReader(file))) {
-			r = reader.readAll();
-			// r.forEach(x -> System.out.println(Arrays.toString(x)));
-		}
+		CSVReader reader = new CSVReader(new FileReader(file));
+		r = reader.readAll();
+		reader.close();
 
 		return r;
 	}
@@ -140,31 +134,27 @@ public class Fase1 {
 	public static ArrayList<ArrayList<String>> herramientaDeCarga(String table, String file, Integer rows,
 			Integer columns) throws FileNotFoundException, IOException {
 
-		// TableDescriptorBuilder tableDescriptorBuilder =
-		// TableDescriptorBuilder.newBuilder(TableName.valueOf(table));
+		TableDescriptorBuilder tableDescriptorBuilder = TableDescriptorBuilder.newBuilder(TableName.valueOf(table));
 
-		// final TableName tableName = TableName.valueOf(table);
+		final TableName tableName = TableName.valueOf(table);
 
-		// Table tableTable = connection.getTable(tableName);
+		Table tableTable = connection.getTable(tableName);
 
-		// ColumnFamilyDescriptor sensor =
-		// ColumnFamilyDescriptorBuilder.newBuilder(Bytes.toBytes("sensor")).build();
-		// ColumnFamilyDescriptor datetime =
-		// ColumnFamilyDescriptorBuilder.newBuilder(Bytes.toBytes("datetime")).build();
-		// ColumnFamilyDescriptor measure =
-		// ColumnFamilyDescriptorBuilder.newBuilder(Bytes.toBytes("measure")).build();
+		ColumnFamilyDescriptor sensor = ColumnFamilyDescriptorBuilder.newBuilder(Bytes.toBytes("sensor")).build();
+		ColumnFamilyDescriptor datetime = ColumnFamilyDescriptorBuilder.newBuilder(Bytes.toBytes("datetime")).build();
+		ColumnFamilyDescriptor measure = ColumnFamilyDescriptorBuilder.newBuilder(Bytes.toBytes("measure")).build();
 
-		// tableDescriptorBuilder.setColumnFamily(sensor);
-		// tableDescriptorBuilder.setColumnFamily(datetime);
-		// tableDescriptorBuilder.setColumnFamily(measure);
+		tableDescriptorBuilder.setColumnFamily(sensor);
+		tableDescriptorBuilder.setColumnFamily(datetime);
+		tableDescriptorBuilder.setColumnFamily(measure);
 
-		// admin.createTable(tableDescriptorBuilder.build());
+		admin.createTable(tableDescriptorBuilder.build());
 
 		List<String[]> data = loadFromFile(file);
 
 		ArrayList<ArrayList<String>> list = new ArrayList<ArrayList<String>>();
 
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < 5; i++) {
 
 			for (int j = 1; j <= rows; j++) {
 
@@ -173,30 +163,26 @@ public class Fase1 {
 				rowData.add(j + data.get(i)[0]);
 				rowData.add(data.get(i)[1]);
 
-				// Put p = new Put(Bytes.toBytes(j + data.get(i)[0] + ":" + data.get(i)[1]));
+				Put p = new Put(Bytes.toBytes(j + data.get(i)[0] + ":" + data.get(i)[1]));
 
-				// p.addColumn(Bytes.toBytes("sensor"), Bytes.toBytes("sensor"), Bytes.toBytes(j
-				// + data.get(i)[0]));
-				// p.addColumn(Bytes.toBytes("datetime"), Bytes.toBytes("datetime"),
-				// Bytes.toBytes(data.get(i)[1]));
+				p.addColumn(Bytes.toBytes("sensor"), Bytes.toBytes("sensor"), Bytes.toBytes(j + data.get(i)[0]));
+				p.addColumn(Bytes.toBytes("datetime"), Bytes.toBytes("datetime"), Bytes.toBytes(data.get(i)[1]));
 
 				for (int k = 0; k < columns; k++) {
 
 					rowData.add(data.get(i)[2]);
 
-					// p.addColumn(Bytes.toBytes("measure"), Bytes.toBytes("measure" + (k + 1)),
-					// Bytes.toBytes(data.get(i)[2]));
+					p.addColumn(Bytes.toBytes("measure"), Bytes.toBytes("measure" + (k + 1)),
+							Bytes.toBytes(data.get(i)[2]));
 
 				}
 
-				// tableTable.put(p);
+				tableTable.put(p);
 
 				list.add(rowData);
 
 			}
 		}
-
-		// list.forEach(x -> System.out.println(x.toString()));
 
 		return list;
 
@@ -205,37 +191,54 @@ public class Fase1 {
 	public static ArrayList<ArrayList<String>> herramientaDeExtraccion(String table, String file, Integer rows,
 			Integer columns) throws FileNotFoundException, IOException {
 
+		TableDescriptorBuilder tableDescriptorBuilder = TableDescriptorBuilder.newBuilder(TableName.valueOf(table));
+
+		final TableName tableName = TableName.valueOf(table);
+
+		Table tableTable = connection.getTable(tableName);
+
+		ColumnFamilyDescriptor sensor = ColumnFamilyDescriptorBuilder.newBuilder(Bytes.toBytes("sensor")).build();
+		ColumnFamilyDescriptor datetime = ColumnFamilyDescriptorBuilder.newBuilder(Bytes.toBytes("datetime")).build();
+		ColumnFamilyDescriptor measure = ColumnFamilyDescriptorBuilder.newBuilder(Bytes.toBytes("measure")).build();
+
+		tableDescriptorBuilder.setColumnFamily(sensor);
+		tableDescriptorBuilder.setColumnFamily(datetime);
+		tableDescriptorBuilder.setColumnFamily(measure);
+
+		admin.createTable(tableDescriptorBuilder.build());
+
 		ArrayList<ArrayList<String>> list = new ArrayList<ArrayList<String>>();
 		ArrayList<ArrayList<String>> data = loadRowsColumns(file, rows, columns);
 
-		Integer start = 0;
-
-		for (int i = start; i < data.size(); i++) {
+		for (int i = 0; i < 5; i++) {
 
 			if (data.get(i).get(0).charAt(0) == rows.toString().charAt(0)) {
 
 				ArrayList<String> rowData = new ArrayList<String>();
 
 				rowData.add(data.get(i).get(0));
-				rowData.add(data.get(i).get(1).substring(0, 10));
+				rowData.add(data.get(i).get(1));
 
-				for (int j = i; j < i + 144; j++) {
+				Put p = new Put(Bytes.toBytes(data.get(i).get(0) + ":" + data.get(i).get(1)));
 
-					if (data.get(j).get(0).charAt(0) == rows.toString().charAt(0)) {
+				p.addColumn(Bytes.toBytes("sensor"), Bytes.toBytes("sensor"), Bytes.toBytes(data.get(i).get(0)));
+				p.addColumn(Bytes.toBytes("datetime"), Bytes.toBytes("datetime"), Bytes.toBytes(data.get(i).get(1)));
 
-						rowData.add(data.get(j).get(2));
+				for (int j = 2; j < columns + 2; j++) {
 
+					if (columns == (j - 1)) {
+
+						rowData.add(data.get(i).get(j));
+
+						p.addColumn(Bytes.toBytes("measure"), Bytes.toBytes("measure" + columns),
+								Bytes.toBytes(data.get(i).get(j)));
 					}
 				}
-
-				start = start + 144;
 
 				list.add(rowData);
 
 			}
 		}
-
-		list.forEach(x -> System.out.println(x.toString()));
 
 		return list;
 
@@ -254,18 +257,19 @@ public class Fase1 {
 
 				ArrayList<String> rowData = new ArrayList<String>();
 
-				if (j == rows) {
-					
-					rowData.add(j + data.get(i)[0]);
-					rowData.add(data.get(i)[1]);
+				rowData.add(j + data.get(i)[0]);
+				rowData.add(data.get(i)[1]);
+
+				for (int k = 0; k < columns; k++) {
+
 					rowData.add(data.get(i)[2]);
 
-					list.add(rowData);
 				}
+
+				list.add(rowData);
+
 			}
 		}
-
-		list.forEach(x -> System.out.println(x.toString()));
 
 		return list;
 	}
